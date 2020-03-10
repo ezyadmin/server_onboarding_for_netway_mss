@@ -1,0 +1,6 @@
+- name: Server Onboarding
+  hosts: all
+  tasks:
+    - name: Start Message
+      debug:
+        msg: "Start World!"
