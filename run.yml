@@ -1,0 +1,140 @@
+- name: Server Onboarding
+  hosts: all
+  gather_facts: true
+  # vars:
+  #   My_Ip : {{ inventory_hostname }}
+  tasks:
+    # ============= set variable =================
+    - set_fact:
+        My_Ip : "{{ inventory_hostname }}"
+        oOs : "{{ ansible_distribution }}"
+        oService: ""
+        #oFService: ""
+    # ============= set variable =================
+    
+    - name : Linux os && family
+      block:
+        - set_fact:
+            oOsVersion: "{{ansible_lsb.major_release}}"
+
+        - name: Get Hostname
+          command: hostname -f
+          register: oHostname
+        # =========== nslookup ================================
+        - name: Register nslookup hostname result
+          # command: nslookup {{ inventory_hostname }}
+          # command: nslookup {{ My_Ip }} | awk -v ip=\"{{ My_Ip }}\" '/name/{print substr($NF,1,length($NF)-1)}'
+          command: dig +short -x {{ My_Ip }}
+          register: oNsHostname
+          ignore_errors: True
+
+        # =========== get public ip address from ipify.org ===
+        - name: Get my public IP
+          ipify_facts:
+            timeout: 20
+
+        # ============ get addition ip ========================
+        - name: Get IP Address
+          command: hostname -I
+          register: oAIp
+
+        # ============ get service on running =================
+        # for ubuntu
+        - name: For Ubuntu
+          block:
+            - name: Get service on ubuntu
+              shell: service --status-all | grep '+' | cut -d ' ' -f 6 | tr '\n' ','
+              register: oService
+              ignore_errors: True
+              # warn: False
+            - set_fact:
+                oFService: "{{oService.stdout}}"
+          when: ansible_os_family == "Debian"
+        # for centos 6
+        - name: For Centos 6
+          block:
+            - name: Get service on centos 6
+              shell: chkconfig --list | grep -P "(3:on)" | cut -f 1
+              register: svC6
+              ignore_errors: True
+            - set_fact:
+                oFService: "{{svC6.stdout}}"
+          when: ansible_os_family == 'RedHat' and ( ansible_distribution_version == '6' or ansible_distribution_version == '5')
+        # for centos 7
+        - name: Get service on centos 7
+          block:
+            - name: Get service on centos 7
+              shell: systemctl list-units --type=service --state=active | grep -P "loaded active" | cut -d '.' -f 1
+              register: svC7
+              ignore_errors: True
+            - set_fact:
+                oFService: "{{svC7.stdout}}"
+          when: ansible_os_family == 'RedHat' and ansible_distribution_version == '7'
+        # ============ get firewall ========================
+        - name: Get iptables incomming
+          # shell: iptables -L -n | grep "pt:"
+          # shell: iptables -L INPUT -n | grep "pt:" | grep -oE "dpt:([0-9]+)$"
+          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \  {'print $1 ":" $3'} | tr '\n' '#'
+          become: yes
+          register: oFirewall_in
+          ignore_errors: True
+        - name: Get iptables outgoing
+          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \  {'print $1 ":" $3'} | tr '\n' '#'
+          become: yes
+          register: oFirewall_out
+          ignore_errors: True
+
+        - debug: var=oFirewall_in
+        - debug: var=oFirewall_out
+
+        #- debug: var=oFService
+        # ============ print debug ============================
+        - debug:
+            msg:
+              - "input={{ inventory_hostname }}"
+              - "ansible_os_family={{ ansible_os_family }}"
+              - "my_Ip={{ My_Ip }}"
+              - "hostname={{ oHostname.stdout }}"
+              - "nslookup_hostname={{ oNsHostname.stdout }}"
+              - "os={{ oOs }}"
+              - "os_version={{ oOsVersion }}"
+              - "public_ip={{ ipify_public_ip }}"
+              - "additional_ip={{ oAIp.stdout }}"
+              - "service={{ oFService }}"
+              - "firewall_in={{ oFirewall_in.stdout }}"
+              - "firewall_out={{ oFirewall_out.stdout }}"
+      rescue:
+        - debug: msg="Get error while running"
+      when: (ansible_os_family == "RedHat") or (ansible_os_family == "Redhat") or (ansible_os_family == "CentOS") or (ansible_os_family == "Debian")
+
+    - name : Windows os
+      block:
+        - set_fact:
+            oOsVersion: "{{ansible_distribution_version}}"
+
+        - name: Test command for windows OS
+          win_command: whoami
+          #become: true
+          register: whoamiout
+          changed_when: false
+          #when: ansible_os_family == "Windows"
+          failed_when: "'error' in whoamiout.stderr"
+        #- debug: msg="whoami={{ whoamiout.results }}"
+        #- debug: msg="Output whoami={{ whoamiout.stdout }}"
+      when: ansible_os_family == "Windows"
+
+    # ============ print output ============================
+    # - debug:
+    #     msg:
+    #       - "input={{ inventory_hostname }}"
+    #       - "ansible_os_family={{ ansible_os_family }}"
+    #       - "my_Ip={{ My_Ip }}"
+    #       - "hostname={{ oHostname.stdout }}"
+    #       - "nslookup_hostname={{ oNsHostname.stdout }}"
+    #       - "os={{ oOs }}"
+    #       - "os_version={{ oOsVersion }}"
+    #       - "public_ip={{ ipify_public_ip }}"
+    #       - "additional_ip={{ oAIp.stdout }}"
+    #       - "service={{ oFService }}"
+    #       - "firewall_in={{ oFirewall_in.stdout }}"
+    #       - "firewall_out={{ oFirewall_out.stdout }}"
