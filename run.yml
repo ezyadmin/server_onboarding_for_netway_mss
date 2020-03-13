@@ -1,6 +1,6 @@
 - name: Server Onboarding
   hosts: all
-  gather_facts: true
+  #gather_facts: true
   # vars:
   #   My_Ip : {{ inventory_hostname }}
   tasks:
@@ -112,6 +112,28 @@
         - set_fact:
             oOsVersion: "{{ansible_distribution_version}}"
 
+        - name: Get Hostname
+          win_shell: net config workstation | findstr /C:"Full Computer name"
+          register: oHostname
+          ignore_errors: true
+        # =========== nslookup ================================
+        # - name: Register nslookup hostname result
+        #   # command: nslookup {{ inventory_hostname }}
+        #   # command: nslookup {{ My_Ip }} | awk -v ip=\"{{ My_Ip }}\" '/name/{print substr($NF,1,length($NF)-1)}'
+        #   command: dig +short -x {{ My_Ip }}
+        #   register: oNsHostname
+        #   ignore_errors: True
+
+        # # =========== get public ip address from ipify.org ===
+        # - name: Get my public IP
+        #   ipify_facts:
+        #     timeout: 20
+
+        # # ============ get addition ip ========================
+        # - name: Get IP Address
+        #   command: hostname -I
+        #   register: oAIp
+
         - name: Test command for windows OS
           win_command: whoami
           #become: true
@@ -120,7 +142,23 @@
           #when: ansible_os_family == "Windows"
           failed_when: "'error' in whoamiout.stderr"
         #- debug: msg="whoami={{ whoamiout.results }}"
-        #- debug: msg="Output whoami={{ whoamiout.stdout }}"
+        - debug: msg="oHostname={{ oHostname }}"
+
+        # ============ print output ============================
+        - debug:
+            msg:
+              - "input={{ inventory_hostname }}"
+              - "ansible_os_family={{ ansible_os_family }}"
+              - "my_Ip={{ My_Ip }}"
+        #       - "hostname={{ oHostname.stdout }}"
+        #       # - "nslookup_hostname={{ oNsHostname.stdout }}"
+        #       # - "os={{ oOs }}"
+        #       # - "os_version={{ oOsVersion }}"
+        #       # - "public_ip={{ ipify_public_ip }}"
+        #       # - "additional_ip={{ oAIp.stdout }}"
+        #       # - "service={{ oFService }}"
+        #       # - "firewall_in={{ oFirewall_in.stdout }}"
+        #       # - "firewall_out={{ oFirewall_out.stdout }}"
       when: ansible_os_family == "Windows"
 
     # ============ print output ============================
