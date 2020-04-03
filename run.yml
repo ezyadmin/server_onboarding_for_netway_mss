@@ -1,6 +1,6 @@
 - name: Server Onboarding
   hosts: all
-  #gather_facts: true
+  # gather_facts: true
   # vars:
   #   My_Ip : {{ inventory_hostname }}
   tasks:
@@ -9,6 +9,7 @@
         My_Ip : "{{ inventory_hostname }}"
         oOs : "{{ ansible_distribution }}"
         oService: ""
+        ezOutput: ""
         #oFService: ""
     # ============= set variable =================
     
@@ -21,12 +22,12 @@
           command: hostname -f
           register: oHostname
         # =========== nslookup ================================
-        - name: Register nslookup hostname result
-          # command: nslookup {{ inventory_hostname }}
-          # command: nslookup {{ My_Ip }} | awk -v ip=\"{{ My_Ip }}\" '/name/{print substr($NF,1,length($NF)-1)}'
-          command: dig +short -x {{ My_Ip }}
-          register: oNsHostname
-          ignore_errors: True
+        # - name: Register nslookup hostname result
+        #   # command: nslookup {{ inventory_hostname }}
+        #   # command: nslookup {{ My_Ip }} | awk -v ip=\"{{ My_Ip }}\" '/name/{print substr($NF,1,length($NF)-1)}'
+        #   command: dig +short -x {{ My_Ip }}
+        #   register: oNsHostname
+        #   ignore_errors: True
 
         # =========== get public ip address from ipify.org ===
         - name: Get my public IP
@@ -95,7 +96,7 @@
               - "ansible_os_family={{ ansible_os_family }}"
               - "my_Ip={{ My_Ip }}"
               - "hostname={{ oHostname.stdout }}"
-              - "nslookup_hostname={{ oNsHostname.stdout }}"
+              #- "nslookup_hostname={{ oNsHostname.stdout }}"
               - "os={{ oOs }}"
               - "os_version={{ oOsVersion }}"
               - "public_ip={{ ipify_public_ip }}"
@@ -103,6 +104,22 @@
               - "service={{ oFService }}"
               - "firewall_in={{ oFirewall_in.stdout }}"
               - "firewall_out={{ oFirewall_out.stdout }}"
+        - set_fact:
+            ezOutput: {
+                        "input" : "{{ inventory_hostname }}",
+                        "ansible_os_family" : "{{ ansible_os_family }}",
+                        "my_Ip" : "{{ My_Ip }}",
+                        "hostname" : "{{ oHostname.stdout }}",
+                        "os" : "{{ oOs }}",
+                        "os_version" : "{{ oOsVersion }}",
+                        "public_ip" : "{{ ipify_public_ip }}",
+                        "additional_ip" : "{{ oAIp.stdout }}",
+                        "service" : "{{ oFService }}",
+                        "firewall_in" : "{{ oFirewall_in.stdout }}",
+                        "firewall_out" : "{{ oFirewall_out.stdout }}"
+                      }
+        - debug:
+            msg: "===ezOutput>>>{{ ezOutput }}<<<ezOutput==="
       rescue:
         - debug: msg="Get error while running"
       when: (ansible_os_family == "RedHat") or (ansible_os_family == "Redhat") or (ansible_os_family == "CentOS") or (ansible_os_family == "Debian")
@@ -116,6 +133,7 @@
           win_shell: net config workstation | findstr /C:"Full Computer name"
           register: oHostname
           ignore_errors: true
+          failed_when: oHostname.rc != 1 and oHostname.rc != 0
         # =========== nslookup ================================
         # - name: Register nslookup hostname result
         #   # command: nslookup {{ inventory_hostname }}
@@ -134,23 +152,38 @@
         #   command: hostname -I
         #   register: oAIp
 
-        - name: Test command for windows OS
-          win_command: whoami
-          #become: true
-          register: whoamiout
-          changed_when: false
-          #when: ansible_os_family == "Windows"
-          failed_when: "'error' in whoamiout.stderr"
-        #- debug: msg="whoami={{ whoamiout.results }}"
-        - debug: msg="oHostname={{ oHostname }}"
+        # - name: Test command for windows OS
+        #   win_command: whoami
+        #   #become: true
+        #   register: whoamiout
+        #   changed_when: false
+        #   #when: ansible_os_family == "Windows"
+        #   failed_when: "'error' in whoamiout.stderr"
+        # #- debug: msg="whoami={{ whoamiout.results }}"
+        # - debug: msg="oHostname={{ oHostname }}"
+
+        # ============ get firewall ========================
+        - name: Get iptables incomming
+          # shell: iptables -L -n | grep "pt:"
+          # shell: iptables -L INPUT -n | grep "pt:" | grep -oE "dpt:([0-9]+)$"
+          win_shell: netstat -aon | find /i """listening"""
+          # netstat -aon | find /i """listening"""
+          #become: yes
+          register: oFirewall_in
+          ignore_errors: True
 
         # ============ print output ============================
+        - debug: var=oFirewall_in
         - debug:
             msg:
               - "input={{ inventory_hostname }}"
               - "ansible_os_family={{ ansible_os_family }}"
               - "my_Ip={{ My_Ip }}"
-        #       - "hostname={{ oHostname.stdout }}"
+              - "os={{ ansible_os_family }}"
+              - "os_version={{ ansible_distribution }}"
+              - "hostname={{ ansible_facts.hostname }}"
+              - "public_ip={{ ansible_ip_addresses }}"
+              - "additional_ip={{ ansible_facts.ip_addresses }}"
         #       # - "nslookup_hostname={{ oNsHostname.stdout }}"
         #       # - "os={{ oOs }}"
         #       # - "os_version={{ oOsVersion }}"
@@ -159,6 +192,34 @@
         #       # - "service={{ oFService }}"
         #       # - "firewall_in={{ oFirewall_in.stdout }}"
         #       # - "firewall_out={{ oFirewall_out.stdout }}"
+
+        # - name: collect facts about system services
+        #   service_facts:
+        #   register: services_state
+
+        # - name: Debug
+        #   debug:
+        #     var: services_state
+
+        - set_fact:
+            ezOutput: {
+                      "input" : "{{ inventory_hostname }}",
+                      "ansible_os_family" : "{{ ansible_os_family }}",
+                      "my_Ip" : "{{ My_Ip }}",
+                      "hostname" : "{{ ansible_facts.hostname }}",
+                      "os" : "{{ ansible_os_family }}",
+                      "os_version" : "{{ ansible_distribution }}",
+                      "public_ip" : "{{ ansible_ip_addresses }}",
+                      "additional_ip" : "{{ansible_facts.ip_addresses }}",
+                      "service" : "###",
+                      "firewall_in" : "###",
+                      "firewall_out" : "###"
+                    }
+        # "service" : "{{ oFService }}",
+        # "firewall_in" : "{{ oFirewall_in.stdout }}",
+        # "firewall_out" : "{{ oFirewall_out.stdout }}"
+        - debug:
+            msg: "===ezOutput>>>{{ ezOutput }}<<<ezOutput==="
       when: ansible_os_family == "Windows"
 
     # ============ print output ============================
