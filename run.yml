@@ -10,7 +10,7 @@
         oOs : "{{ ansible_distribution }}"
         oService: ""
         ezOutput: ""
-        #oFService: ""
+        oFService: ""
     # ============= set variable =================
     
     - name : Linux os && family
