@@ -17,7 +17,7 @@
       block:
         - set_fact:
             # oOsVersion: "{{ansible_lsb.major_release}}"
-            oOsVersion: "{{ansible_distribution_version}}"
+            oOsVersion: "{{ansible_distribution_major_version}}"
 
         - name: Get Hostname
           command: hostname -f
@@ -61,7 +61,7 @@
               ignore_errors: True
             - set_fact:
                 oFService: "{{svC6.stdout}}"
-          when: ansible_os_family == 'RedHat' and ( ansible_distribution_version == '6' or ansible_distribution_version == '5')
+          when: ansible_os_family == 'RedHat' and ( ansible_distribution_major_version == '6' or ansible_distribution_major_version == '5')
         # for centos 7
         - name: Get service on centos 7
           block:
@@ -71,7 +71,7 @@
               ignore_errors: True
             - set_fact:
                 oFService: "{{svC7.stdout}}"
-          when: ansible_os_family == 'RedHat' and ansible_distribution_version == '7'
+          when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
         # ============ get firewall ========================
         - name: Get iptables incomming
           # shell: iptables -L -n | grep "pt:"
@@ -128,7 +128,7 @@
     - name : Windows os
       block:
         - set_fact:
-            oOsVersion: "{{ansible_distribution_version}}"
+            oOsVersion: "{{ansible_distribution_major_version}}"
 
         - name: Get Hostname
           win_shell: net config workstation | findstr /C:"Full Computer name"
