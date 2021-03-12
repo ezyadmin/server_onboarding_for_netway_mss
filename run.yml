@@ -56,7 +56,7 @@
         - name: For Centos 6
           block:
             - name: Get service on centos 6
-              shell: chkconfig --list | grep -P "(3:on)" | cut -f 1 | tr '\n' '#'
+              shell: /sbin/chkconfig --list | grep -P "(3:on)" | cut -f 1 | tr '\n' '#'
               register: svC6
               ignore_errors: True
             - set_fact:
