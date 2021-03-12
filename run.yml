@@ -76,12 +76,12 @@
         - name: Get iptables incomming
           # shell: iptables -L -n | grep "pt:"
           # shell: iptables -L INPUT -n | grep "pt:" | grep -oE "dpt:([0-9]+)$"
-          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \\ \ {'print $1 ":" $3'} | tr '\n' '#'
+          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)\s*$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \\ \ {'print $1 ":" $3'} | tr '\n' '#'
           become: yes
           register: oFirewall_in
           ignore_errors: True
         - name: Get iptables outgoing
-          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \\ \ {'print $1 ":" $3'} | tr '\n' '#'
+          shell: iptables -L INPUT -n | grep "pt:" | grep -oE "(tcp|udp)\ (s|d)pt:([0-9]+)\s*$" | sed -e 's/[:]/ /g' -e 's/^ *//g' | awk -F \\ \ {'print $1 ":" $3'} | tr '\n' '#'
           become: yes
           register: oFirewall_out
           ignore_errors: True
